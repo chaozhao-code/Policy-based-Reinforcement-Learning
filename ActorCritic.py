@@ -95,7 +95,7 @@ class CriticNetwork(nn.Module):
 
 
 class Agent():
-    def __init__(self, n_states, env, n_actions = 3, learning_rate=0.001, lamda=0.1, gamma=0.99, epsilon=0.3, steps=5):
+    def __init__(self, n_states, env, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, epsilon=0.3, steps=5):
 
         self.learning_rate = learning_rate
         self.lamda = lamda # control the strength of the entropy regularization term in the loss
@@ -108,15 +108,18 @@ class Agent():
         self.actions = range(self.n_actions)
         self.steps = steps
         self.device = "cpu"
-        self.actor = ActorNetwork(n_states, n_actions, neurons = [128, 128]).to(self.device)
+
+        self.actor = ActorNetwork(n_states, n_actions, neurons = 128).to(self.device)
         weights_init(self.actor)
-        self.optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.learning_rate)
-        self.critic = CriticNetwork(n_states, neurons = [128, 128]).to(self.device)
+        self.ActorOptimizer = torch.optim.Adam(self.actor.parameters(), lr=self.learning_rate)
+
+        self.critic = CriticNetwork(n_states, neurons = 128).to(self.device)
         weights_init(self.critic)
-        self.optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.learning_rate)
+        self.criticLoss = torch.nn.MSELoss().to(self.device)
+        self.CriticOptimizer = torch.optim.Adam(self.critic.parameters(), lr=self.learning_rate)
         self.type = torch.float32
         self.steps = 0
-        self.n = 5
+        self.n = 2
 
     # def entropy_regularisation(self, state):
     #     return -np.sum(self.policy(state) * np.log(self.policy(state)))
@@ -143,32 +146,55 @@ class Agent():
                 values.append(self.critic(next_s))
                 break
 
+
         total_reward = np.sum([trace[i][2] for i in range(len(trace))])
-        print("Episode : {}, Reward : {:.2f}".format(episode, total_reward))
+        if episode % 1000 == 0:
+            print("Episode : {}, Reward : {:.2f}".format(episode, total_reward))
 
         estimated_Q = []
+        estimated_Q_with_gradient = []
 
         for t in range(len(trace) + 1 -self.n):
-            Gt = self.gamma ** self.n * values[t+self.n]
+            Gt = self.gamma ** self.n * values[t+self.n].detach().numpy()[0]
+            Gt_Gradient = self.gamma ** self.n * values[t+self.n]
             for i in range(t, t + self.n):
                 Gt += self.gamma**(i-t) * trace[i][2]
+                Gt_Gradient += self.gamma**(i-t) * trace[i][2]
+            estimated_Q.append(Gt)
+            estimated_Q_with_gradient.append(Gt_Gradient)
 
 
 
         # print([trace[i][2] for i in range(len(trace))])
-        # print(discounted_rewards)
 
-        #https://github.com/kvsnoufal/reinforce/blob/main/train_play_cartpole.py
-        discounted_rewards = np.array(discounted_rewards)
+        # https://github.com/kvsnoufal/reinforce/blob/main/train_play_cartpole.py
+        estimated_Q = np.array(estimated_Q)
 
-        discounted_rewards_tensor = torch.tensor(discounted_rewards, dtype=self.type, device=self.device)
+        estimated_Q_tensor = torch.tensor(estimated_Q, dtype=self.type, device=self.device)
         # discounted_rewards_normalized = (discounted_rewards_tensor - torch.mean(discounted_rewards_tensor)) / (torch.std(discounted_rewards_tensor))
+        estimated_Q_with_gradient = torch.tensor(estimated_Q_with_gradient, dtype=self.type, device=self.device)
 
-        log_probs = torch.stack(log_probs)
-        entropies = torch.stack(entropies)
-        policy_gradient = -(discounted_rewards_tensor * log_probs + self.lamda * entropies)
-        self.policy.zero_grad()
-        policy_gradient.sum().backward()
-        self.optimizer.step()
+
+        log_probs = torch.stack(log_probs[:len(trace) + 1 -self.n])
+        entropies = torch.stack(entropies[:len(trace) + 1 -self.n])
+        values = torch.stack(values[:len(trace) + 1 -self.n])
+        values = torch.reshape(values, (-1, ))
+
+        actor_gradient = -(estimated_Q_with_gradient * log_probs + self.lamda * entropies)
+
+        self.critic.zero_grad()
+        self.actor.zero_grad()
+        critic_loss = self.criticLoss(estimated_Q_with_gradient.detach(), values)
+        critic_loss.backward()
+        actor_gradient.sum().backward()
+        self.CriticOptimizer.step()
+        self.ActorOptimizer.step()
+
+
+
+
+
+
+
 
 

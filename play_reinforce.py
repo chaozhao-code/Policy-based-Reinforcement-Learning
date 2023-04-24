@@ -1,4 +1,4 @@
-from reinforce import Agent
+from ActorCritic import Agent
 from catch import Catch
 import matplotlib
 import tqdm
@@ -31,7 +31,7 @@ def test():
     agent = Agent(n_states, env, n_actions)
 
     #train
-    for i in range(4000):
+    for i in range(40000):
         agent.train(i)
 
     #play
