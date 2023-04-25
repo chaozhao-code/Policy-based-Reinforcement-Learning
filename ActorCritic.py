@@ -6,17 +6,14 @@ import math
 import sys
 
 
-def weights_init(module):
-    if isinstance(module, nn.Conv2d):
-        module.weight.data.normal_(mean=0.0, std=1.0)
-        if module.bias is not None:
-            module.bias.data.zero_()
+
 
 class ActorNetwork(nn.Module):
-    def __init__(self, n_states, n_actions, layers=1, neurons=128, activation=nn.ReLU()):
+    def __init__(self, n_states, n_actions, layers=1, neurons=128, activation=nn.ReLU(), initialization=nn.init.xavier_uniform_):
         super(ActorNetwork, self).__init__()
 
         self.n_actions = n_actions
+        self.initialization = initialization
 
         modules = []
         if type(neurons) == int:
@@ -41,6 +38,13 @@ class ActorNetwork(nn.Module):
         else:
             raise TypeError("Only Int and List Are Allowed")
         self.network = nn.Sequential(*modules)
+        self.network.apply(self.initialize_weights)
+
+    def initialize_weights(self, module):
+        if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
+            self.initialization(module.weight)
+            ## always initialize bias as 0
+            nn.init.zeros_(module.bias)
 
 
     def select_action(self, a_distribution):
@@ -88,7 +92,7 @@ class CriticNetwork(nn.Module):
 
 
 class Agent():
-    def __init__(self, env, n_states, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, steps=3):
+    def __init__(self, env, n_states, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, steps=1, if_conv=False):
 
         self.learning_rate = learning_rate
         self.lamda = lamda # control the strength of the entropy regularization term in the loss
@@ -102,18 +106,16 @@ class Agent():
         self.device = "cpu"
 
         self.actor = ActorNetwork(n_states, n_actions, neurons = 128).to(self.device)
-        weights_init(self.actor)
         self.ActorOptimizer = torch.optim.Adam(self.actor.parameters(), lr=self.learning_rate)
 
         self.critic = CriticNetwork(n_states, neurons = 128).to(self.device)
-        weights_init(self.critic)
         self.criticLoss = torch.nn.MSELoss().to(self.device)
         self.CriticOptimizer = torch.optim.Adam(self.critic.parameters(), lr=self.learning_rate)
         self.type = torch.float32
 
 
         ##
-        self.bootstrapping = False  # if use bootstrapping method
+        self.bootstrapping = True  # if use bootstrapping method
         self.baseline = True       # if use baseline subtraction method
 
 
@@ -125,7 +127,6 @@ class Agent():
         log_probs = []
         entropies = []
         values = []
-        advantage = []
         for step in range(10000):
             a, log_prob, entropy = self.actor(s)
             values.append(self.critic(s))
@@ -141,8 +142,8 @@ class Agent():
 
 
         total_reward = np.sum([trace[i][2] for i in range(len(trace))])
-        if episode % 1000 == 0:
-            print("Episode : {}, Reward : {:.2f}".format(episode, total_reward))
+        # if episode % 1000 == 0:
+        print("Episode : {}, Reward : {:.2f}".format(episode, total_reward))
 
         if self.bootstrapping:
             estimated_Q = []
@@ -160,11 +161,13 @@ class Agent():
             values = torch.reshape(values, (-1,))
         else:
             discounted_rewards = []
-            for t in range(len(trace)):
-                gt = 0
-                for next_t in range(t, len(trace)):
-                    gt += self.gamma ** (next_t - t) * trace[next_t][2]
+            gt_pre = 0
+            for t in range(len(trace) - 1, -1, -1):
+                gt = trace[t][2] + self.gamma * gt_pre
                 discounted_rewards.append(gt)
+                gt_pre = gt
+            discounted_rewards.reverse()
+
             estimated_Q = torch.tensor(np.array(discounted_rewards), dtype=self.type, device=self.device)
 
             log_probs = torch.stack(log_probs)
@@ -174,8 +177,8 @@ class Agent():
 
         if self.baseline:
             advantage = estimated_Q - values
-            actor_gradient = -(advantage.detach() * log_probs + self.lamda * entropies)/len(trace)
-            critic_loss = torch.square(advantage)
+            actor_gradient = -(advantage.detach() * log_probs + self.lamda * entropies) / len(values)
+            critic_loss = torch.square(advantage) / len(values)
             self.critic.zero_grad()
             self.actor.zero_grad()
             critic_loss.sum().backward()
@@ -183,13 +186,14 @@ class Agent():
             self.CriticOptimizer.step()
             self.ActorOptimizer.step()
         else:
-            actor_gradient = -(estimated_Q * log_probs + self.lamda * entropies)/len(trace)
+            actor_gradient = -(estimated_Q.detach() * log_probs + self.lamda * entropies) / len(values)
 
             self.critic.zero_grad()
             self.actor.zero_grad()
 
-            critic_loss = self.criticLoss(estimated_Q.detach(), values)
-            critic_loss.backward()
+            critic_loss = torch.square(estimated_Q.detach() - values) / len(values)
+            # self.criticLoss(estimated_Q.detach(), values)
+            critic_loss.sum().backward()
             actor_gradient.sum().backward()
             self.CriticOptimizer.step()
             self.ActorOptimizer.step()

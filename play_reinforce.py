@@ -28,7 +28,7 @@ def test():
     n_states = 7 * 7 * 2
     n_actions = env.action_space.n
 
-    agent = Agent(env, n_states, n_actions)
+    agent = Agent(env, n_states, n_actions, if_conv=True)
 
     #train
     for i in range(40000):
