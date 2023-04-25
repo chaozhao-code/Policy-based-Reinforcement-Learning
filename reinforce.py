@@ -63,7 +63,7 @@ class DQN(nn.Module):
         return action, log_prob_action, entropy
 
 class Agent():
-    def __init__(self, n_states, env, n_actions = 3, learning_rate=0.001, lamda=0.1, gamma=0.99, epsilon=0.3, steps=5):
+    def __init__(self, env, n_states, n_actions = 3, learning_rate=0.001, lamda=0.1, gamma=0.99, epsilon=0.3, steps=5):
 
         self.learning_rate = learning_rate
         self.lamda = lamda # control the strength of the entropy regularization term in the loss
@@ -76,14 +76,6 @@ class Agent():
         self.actions = range(self.n_actions)
         self.steps = steps
         self.device = "cpu"
-        #     (
-        #     "cuda"
-        #     if torch.cuda.is_available()
-        #     else "mps"
-        #     if torch.backends.mps.is_available()
-        #     else "cpu"
-        # )
-
         self.policy = DQN(n_states, n_actions, neurons = [128, 128]).to(self.device)
         weights_init(self.policy)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=self.learning_rate)

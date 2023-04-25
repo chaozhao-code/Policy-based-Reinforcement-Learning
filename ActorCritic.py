@@ -1,5 +1,3 @@
-import sys
-
 import torch
 from torch import nn
 import random
@@ -7,11 +5,6 @@ import numpy as np
 import math
 import sys
 
-def softmax(x, temp):
-    x = x / temp # scale by temperature
-    z = x - max(x) # substract max to prevent overflow of softmax
-    # print(np.exp(z)/np.sum(np.exp(z)))
-    return np.exp(z)/np.sum(np.exp(z)) # compute softmax
 
 def weights_init(module):
     if isinstance(module, nn.Conv2d):
@@ -95,18 +88,17 @@ class CriticNetwork(nn.Module):
 
 
 class Agent():
-    def __init__(self, n_states, env, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, epsilon=0.3, steps=5):
+    def __init__(self, env, n_states, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, steps=3):
 
         self.learning_rate = learning_rate
         self.lamda = lamda # control the strength of the entropy regularization term in the loss
-        self.epsilon = epsilon
+
         self.gamma = gamma
-        self.epsilon = epsilon
         self.n_states = n_states
         self.env = env
         self.n_actions = n_actions
         self.actions = range(self.n_actions)
-        self.steps = steps
+        self.n = steps  # for bootstrapping, estimation depth
         self.device = "cpu"
 
         self.actor = ActorNetwork(n_states, n_actions, neurons = 128).to(self.device)
@@ -118,11 +110,11 @@ class Agent():
         self.criticLoss = torch.nn.MSELoss().to(self.device)
         self.CriticOptimizer = torch.optim.Adam(self.critic.parameters(), lr=self.learning_rate)
         self.type = torch.float32
-        self.steps = 0
-        self.n = 2
 
-    # def entropy_regularisation(self, state):
-    #     return -np.sum(self.policy(state) * np.log(self.policy(state)))
+
+        ##
+        self.bootstrapping = False  # if use bootstrapping method
+        self.baseline = True       # if use baseline subtraction method
 
 
     def train(self, episode):
@@ -133,6 +125,7 @@ class Agent():
         log_probs = []
         entropies = []
         values = []
+        advantage = []
         for step in range(10000):
             a, log_prob, entropy = self.actor(s)
             values.append(self.critic(s))
@@ -151,44 +144,55 @@ class Agent():
         if episode % 1000 == 0:
             print("Episode : {}, Reward : {:.2f}".format(episode, total_reward))
 
-        estimated_Q = []
-        estimated_Q_with_gradient = []
+        if self.bootstrapping:
+            estimated_Q = []
+            for t in range(len(trace) + 1 -self.n):
+                Gt = self.gamma ** self.n * values[t+self.n]
+                for i in range(t, t + self.n):
+                    Gt += self.gamma**(i-t) * trace[i][2]
+                estimated_Q.append(Gt)
 
-        for t in range(len(trace) + 1 -self.n):
-            Gt = self.gamma ** self.n * values[t+self.n].detach().numpy()[0]
-            Gt_Gradient = self.gamma ** self.n * values[t+self.n]
-            for i in range(t, t + self.n):
-                Gt += self.gamma**(i-t) * trace[i][2]
-                Gt_Gradient += self.gamma**(i-t) * trace[i][2]
-            estimated_Q.append(Gt)
-            estimated_Q_with_gradient.append(Gt_Gradient)
+            estimated_Q = torch.tensor(estimated_Q, dtype=self.type, device=self.device)
 
+            log_probs = torch.stack(log_probs[:len(trace) + 1 - self.n])
+            entropies = torch.stack(entropies[:len(trace) + 1 - self.n])
+            values = torch.stack(values[:len(trace) + 1 - self.n])
+            values = torch.reshape(values, (-1,))
+        else:
+            discounted_rewards = []
+            for t in range(len(trace)):
+                gt = 0
+                for next_t in range(t, len(trace)):
+                    gt += self.gamma ** (next_t - t) * trace[next_t][2]
+                discounted_rewards.append(gt)
+            estimated_Q = torch.tensor(np.array(discounted_rewards), dtype=self.type, device=self.device)
 
+            log_probs = torch.stack(log_probs)
+            entropies = torch.stack(entropies)
+            values = torch.stack(values[:len(trace)])
+            values = torch.reshape(values, (-1,))
 
-        # print([trace[i][2] for i in range(len(trace))])
+        if self.baseline:
+            advantage = estimated_Q - values
+            actor_gradient = -(advantage.detach() * log_probs + self.lamda * entropies)/len(trace)
+            critic_loss = torch.square(advantage)
+            self.critic.zero_grad()
+            self.actor.zero_grad()
+            critic_loss.sum().backward()
+            actor_gradient.sum().backward()
+            self.CriticOptimizer.step()
+            self.ActorOptimizer.step()
+        else:
+            actor_gradient = -(estimated_Q * log_probs + self.lamda * entropies)/len(trace)
 
-        # https://github.com/kvsnoufal/reinforce/blob/main/train_play_cartpole.py
-        estimated_Q = np.array(estimated_Q)
+            self.critic.zero_grad()
+            self.actor.zero_grad()
 
-        estimated_Q_tensor = torch.tensor(estimated_Q, dtype=self.type, device=self.device)
-        # discounted_rewards_normalized = (discounted_rewards_tensor - torch.mean(discounted_rewards_tensor)) / (torch.std(discounted_rewards_tensor))
-        estimated_Q_with_gradient = torch.tensor(estimated_Q_with_gradient, dtype=self.type, device=self.device)
-
-
-        log_probs = torch.stack(log_probs[:len(trace) + 1 -self.n])
-        entropies = torch.stack(entropies[:len(trace) + 1 -self.n])
-        values = torch.stack(values[:len(trace) + 1 -self.n])
-        values = torch.reshape(values, (-1, ))
-
-        actor_gradient = -(estimated_Q_with_gradient * log_probs + self.lamda * entropies)
-
-        self.critic.zero_grad()
-        self.actor.zero_grad()
-        critic_loss = self.criticLoss(estimated_Q_with_gradient.detach(), values)
-        critic_loss.backward()
-        actor_gradient.sum().backward()
-        self.CriticOptimizer.step()
-        self.ActorOptimizer.step()
+            critic_loss = self.criticLoss(estimated_Q.detach(), values)
+            critic_loss.backward()
+            actor_gradient.sum().backward()
+            self.CriticOptimizer.step()
+            self.ActorOptimizer.step()
 
 
 
