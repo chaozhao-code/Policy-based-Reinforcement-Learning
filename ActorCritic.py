@@ -61,8 +61,9 @@ class ActorNetwork(nn.Module):
 
 
 class CriticNetwork(nn.Module):
-    def __init__(self, n_states, layers=1, neurons=128, activation=nn.ReLU()):
+    def __init__(self, n_states, layers=1, neurons=128, activation=nn.ReLU(), initialization = nn.init.xavier_uniform_):
         super(CriticNetwork, self).__init__()
+        self.initialization = initialization
 
         modules = []
         if type(neurons) == int:
@@ -85,13 +86,20 @@ class CriticNetwork(nn.Module):
         else:
             raise TypeError("Only Int and List Are Allowed")
         self.network = nn.Sequential(*modules)
+        self.network.apply(self.initialize_weights)
+
+    def initialize_weights(self, module):
+        if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
+            self.initialization(module.weight)
+            ## always initialize bias as 0
+            nn.init.zeros_(module.bias)
 
     def forward(self, state):
         state = torch.tensor(state.reshape(-1, ))
         return self.network(state)
 
 
-class Agent():
+class ACAgent():
     def __init__(self, env, n_states, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, steps=1, if_conv=False):
 
         self.learning_rate = learning_rate
@@ -141,9 +149,7 @@ class Agent():
                 break
 
 
-        total_reward = np.sum([trace[i][2] for i in range(len(trace))])
-        # if episode % 1000 == 0:
-        print("Episode : {}, Reward : {:.2f}".format(episode, total_reward))
+
 
         if self.bootstrapping:
             estimated_Q = []
@@ -197,6 +203,11 @@ class Agent():
             actor_gradient.sum().backward()
             self.CriticOptimizer.step()
             self.ActorOptimizer.step()
+
+        total_reward = np.sum([trace[i][2] for i in range(len(trace))])
+        return total_reward
+        # if episode % 1000 == 0:
+        # print("Episode : {}, Reward : {:.2f}".format(episode, total_reward))
 
 
 

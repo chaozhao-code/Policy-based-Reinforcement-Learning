@@ -7,10 +7,12 @@ import numpy as np
 import math
 import sys
 import time
+from torchsummary import summary
+
 
 
 class Policy(nn.Module):
-    def __init__(self, n_states, n_actions, layers=1, neurons=128, if_conv=False, activation=nn.ReLU(), initialization=nn.init.xavier_uniform_):
+    def __init__(self, n_states, n_actions, layers=1, neurons=128, if_conv=False, activation=nn.SiLU(), initialization=nn.init.xavier_uniform_):
         super(Policy, self).__init__()
 
         self.n_actions = n_actions
@@ -80,8 +82,8 @@ class Policy(nn.Module):
         entropy = - torch.sum(action_distribution * torch.log(action_distribution))
         return action, log_prob_action, entropy
 
-class Agent():
-    def __init__(self, env, n_states, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, if_conv=False):
+class REINFORCEAgent():
+    def __init__(self, env, n_states, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, step=1, if_conv=False):
 
         self.learning_rate = learning_rate
         self.lamda = lamda # control the strength of the entropy regularization term in the loss
@@ -96,6 +98,9 @@ class Agent():
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=self.learning_rate)
         self.type = torch.float32
         self.steps = 0
+
+        # print(sum([param.nelement() for param in self.policy.parameters()]))
+        # sys.exit(0)
 
 
 
@@ -137,7 +142,7 @@ class Agent():
         self.optimizer.step()
 
         total_reward = np.sum([trace[i][2] for i in range(len(trace))])
-        print("Episode : {}, Reward : {:.2f}".format(episode, total_reward))
+        # print("Episode : {}, Reward : {:.2f}".format(episode, total_reward))
         return total_reward
 
 

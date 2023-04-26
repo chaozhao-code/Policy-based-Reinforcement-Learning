@@ -1,4 +1,4 @@
-from ActorCritic import Agent
+from ActorCritic import ACAgent
 from catch import Catch
 import matplotlib
 import tqdm
