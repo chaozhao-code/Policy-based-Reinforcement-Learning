@@ -9,7 +9,7 @@ import sys
 
 
 class ActorNetwork(nn.Module):
-    def __init__(self, n_states, n_actions, layers=1, neurons=128, activation=nn.ReLU(), initialization=nn.init.xavier_uniform_):
+    def __init__(self, n_states, n_actions, layers=1, neurons=128, activation=nn.SiLU(), initialization=nn.init.xavier_uniform_):
         super(ActorNetwork, self).__init__()
 
         self.n_actions = n_actions
@@ -100,7 +100,7 @@ class CriticNetwork(nn.Module):
 
 
 class ACAgent():
-    def __init__(self, env, n_states, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, steps=1, if_conv=False):
+    def __init__(self, env, n_states, n_actions=3, learning_rate=0.001, lamda=0.01, gamma=0.99, steps=1, if_conv=False, bootstrapping=True, baseline=True):
 
         self.learning_rate = learning_rate
         self.lamda = lamda # control the strength of the entropy regularization term in the loss
@@ -120,11 +120,12 @@ class ACAgent():
         self.criticLoss = torch.nn.MSELoss().to(self.device)
         self.CriticOptimizer = torch.optim.Adam(self.critic.parameters(), lr=self.learning_rate)
         self.type = torch.float32
+        self.if_conv = if_conv
 
 
         ##
-        self.bootstrapping = True  # if use bootstrapping method
-        self.baseline = True       # if use baseline subtraction method
+        self.bootstrapping = bootstrapping  # if use bootstrapping method
+        self.baseline = baseline       # if use baseline subtraction method
 
 
     def train(self, episode):

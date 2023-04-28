@@ -16,8 +16,9 @@ class LearningCurvePlot:
         ''' y: vector of average reward results
         label: string to appear as label in plot legend '''
         steps = np.arange(y.shape[0])
-        y = smooth(y, window=21)
-        std = smooth(std, window=21)
+        if len(y) > 21:
+            y = smooth(y, window=21)
+            std = smooth(std, window=21)
 
         if label is not None:
             self.ax.plot(y, label=label)
@@ -51,8 +52,9 @@ class LearningCurvePlotNoError:
         ''' y: vector of average reward results
         label: string to appear as label in plot legend '''
         steps = np.arange(y.shape[0])
-        y = smooth(y, window=21)
-        std = smooth(std, window=21)
+        if len(y) > 21:
+            y = smooth(y, window=21)
+            std = smooth(std, window=21)
 
         if label is not None:
             self.ax.plot(y, label=label)

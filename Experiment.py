@@ -25,6 +25,8 @@ baseline_config = {"type": "R",                                   ## must be 'R'
                    "initialization": nn.init.xavier_normal_,      ## initialization method
                    "if_conv": False,                              ## whether to use convolutional layers, only effective for REINFORCE
                    "step": 1,                                     ## depth of bootstrapping of ActorCritic
+                   "bootstrapping": True,                         ## control if use the bootstrapping technology
+                   "baseline": True,                              ## control if use the baseline subtraction technology
                     # parameters below are related to the environment
                    "rows": 7,
                    "columns": 7,
@@ -36,6 +38,7 @@ baseline_config = {"type": "R",                                   ## must be 'R'
                    }
 
 def run(config):
+
     env = Catch(rows=config['rows'], columns=config['columns'], speed=config['speed'], max_steps=config['max_steps'],
                 max_misses=config['max_misses'], observation_type=config['observation_type'], seed=config['seed'])
     if config['observation_type'] == 'pixel':
@@ -43,6 +46,8 @@ def run(config):
     else:
         n_states = 3
     n_actions = env.action_space.n
+
+    interrupt = []
 
     # if config['type'] == 'R':
     #     agent = REINFORCEAgent(env, n_states, n_actions=n_actions, learning_rate=config['alpha'], lamda=config['lamda'], gamma=config['gamma'], step=config['step'], if_conv=config['if_conv'])
@@ -57,30 +62,60 @@ def run(config):
                                    if_conv=config['if_conv'])
         else:
             agent = ACAgent(env, n_states, n_actions=n_actions, learning_rate=config['alpha'], lamda=config['lamda'],
-                            gamma=config['gamma'], step=config['step'], if_conv=config['if_conv'])
+                            gamma=config['gamma'], step=config['step'], if_conv=config['if_conv'], bootstrapping=config['bootstrapping'], baseline=config['baseline'])
         for j in range(EPISODE):
-            episodeReward[i, j] = agent.train(j)
+            try:
+                episodeReward[i, j] = agent.train(j)
+            except:
+                interrupt.append(j)
+                break
+
+    if len(interrupt) != 0:
+        minEpisode = max(interrupt)
+        return episodeReward[:, :minEpisode]
 
     return episodeReward
 
 
-## Tune Activation Function
-Plot = LearningCurvePlot(title = 'REINFORCE with Different Network Architecture')
-PlotNoError = LearningCurvePlotNoError(title = 'REINFORCE with Different Network Architecture')
-if_conv = [True, False]
-if_conv_name = ['Convolution', 'Full Connected']
-for act in range(len(if_conv)):
+## Architecture
+# Plot = LearningCurvePlot(title = 'REINFORCE with Different Network Architecture')
+# PlotNoError = LearningCurvePlotNoError(title = 'REINFORCE with Different Network Architecture')
+# if_conv = [True, False]
+# if_conv_name = ['Convolution', 'Full Connected']
+# for act in range(len(if_conv)):
+#     config = deepcopy(baseline_config) # we must use deepcope to avoid changing the value of original baseline config
+#     config['if_conv'] = if_conv[act]
+#     episodeReward = run(config)
+#     mean_reward = np.mean(episodeReward, axis=0)
+#     std_reward = np.std(episodeReward, axis=0)
+#     fileName = 'arrayResults/REINFORCE_' + if_conv_name[act] + '.npy'
+#     np.save(fileName, episodeReward)
+#     Plot.add_curve(mean_reward, std_reward, label=r'{}'.format(if_conv_name[act]))
+#     PlotNoError.add_curve(mean_reward, std_reward, label=r'{}'.format(if_conv_name[act]))
+#     Plot.save("plotResults/Architecture.png")
+#     PlotNoError.save("plotResults/ArchitectureNoError.png")
+#
+# Plot.save("plotResults/Architecture.png")
+# PlotNoError.save("plotResults/ArchitectureNoError.png")
+
+## Learning Rate
+Plot = LearningCurvePlot(title = 'REINFORCE with Different Learning Rates')
+PlotNoError = LearningCurvePlotNoError(title = 'REINFORCE with Different Learning Rates')
+LR = [1, 0.1, 0.01, 0.001, 0.0001, 0.00001]
+LRName = ['1', '0,1', '0,01', '0,001', '0,0001', '0,00001']
+for act in range(len(LR)):
     config = deepcopy(baseline_config) # we must use deepcope to avoid changing the value of original baseline config
-    config['if_conv'] = if_conv[act]
+    config['alpha'] = LR[act]
     episodeReward = run(config)
     mean_reward = np.mean(episodeReward, axis=0)
     std_reward = np.std(episodeReward, axis=0)
-    fileName = 'arrayResults/REINFORCE_' + if_conv_name[act] + '.npy'
+    # print(mean_reward)
+    fileName = 'arrayResults/REINFORCE_LR=' + LRName[act] + '.npy'
     np.save(fileName, episodeReward)
-    Plot.add_curve(mean_reward, std_reward, label=r'{}'.format(if_conv_name[act]))
-    PlotNoError.add_curve(mean_reward, std_reward, label=r'{}'.format(if_conv_name[act]))
-    Plot.save("plotResults/Architecture.png")
-    PlotNoError.save("plotResults/ArchitectureNoError.png")
+    Plot.add_curve(mean_reward, std_reward, label=r'$\alpha=${}'.format(LR[act]))
+    PlotNoError.add_curve(mean_reward, std_reward, label=r'$\alpha=${}'.format(LR[act]))
+    Plot.save("plotResults/LearningRate.png")
+    PlotNoError.save("plotResults/LearningRateNoError.png")
 
-Plot.save("plotResults/Architecture.png")
-PlotNoError.save("plotResults/ArchitectureNoError.png")
+Plot.save("plotResults/LearningRate.png")
+PlotNoError.save("plotResults/LearningRateNoError.png")
