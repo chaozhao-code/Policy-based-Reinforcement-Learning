@@ -100,7 +100,7 @@ class CriticNetwork(nn.Module):
 
 
 class ACAgent():
-    def __init__(self, env, n_states, n_actions=3, learning_rate=0.001, lamda=0.01, gamma=0.99, steps=1, if_conv=False, bootstrapping=True, baseline=True):
+    def __init__(self, env, n_states, n_actions=3, learning_rate=0.001, lamda=0.01, gamma=0.99, step=1, if_conv=False, bootstrapping=True, baseline=True):
 
         self.learning_rate = learning_rate
         self.lamda = lamda # control the strength of the entropy regularization term in the loss
@@ -110,7 +110,7 @@ class ACAgent():
         self.env = env
         self.n_actions = n_actions
         self.actions = range(self.n_actions)
-        self.n = steps  # for bootstrapping, estimation depth
+        self.n = step  # for bootstrapping, estimation depth
         self.device = "cpu"
 
         self.actor = ActorNetwork(n_states, n_actions, neurons = 128).to(self.device)
