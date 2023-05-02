@@ -93,7 +93,7 @@ class REINFORCEAgent():
         self.n_actions = n_actions
         self.actions = range(self.n_actions)
         # self.steps = steps
-        self.device = "cpu"
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.policy = Policy(n_states, n_actions, neurons = 128, if_conv=if_conv).to(self.device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=self.learning_rate)
         self.type = torch.float32
