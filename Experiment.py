@@ -60,12 +60,10 @@ def run(config):
             agent = REINFORCEAgent(env, n_states, n_actions=n_actions, learning_rate=config['alpha'],
                                    lamda=config['lamda'], gamma=config['gamma'], step=config['step'],
                                    if_conv=config['if_conv'])
-            print(agent.device)
         else:
             agent = ACAgent(env, n_states, n_actions=n_actions, learning_rate=config['alpha'], lamda=config['lamda'],
                             gamma=config['gamma'], step=config['step'], if_conv=config['if_conv'], bootstrapping=config['bootstrapping'], baseline=config['baseline'])
 
-            print(agent.device)
         for j in range(EPISODE):
             try:
                 episodeReward[i, j] = agent.train(j)
@@ -194,73 +192,77 @@ def run(config):
 # Plot.save("plotResults/ACDepth.png")
 # PlotNoError.save("plotResults/ACDepthNoError.png")
 
-#Gamma Actor
-Plot = LearningCurvePlot(title = 'Actor Critic with Different Discount Factors')
-PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with Different Discount Factors')
-depth = [0.1, 0.5, 0.8, 0.85, 0.9, 0.95, 0.99, 1]
-for act in range(len(depth)):
-    config = deepcopy(baseline_config) # we must use deepcope to avoid changing the value of original baseline config
-    config['gamma'] = depth[act]
-    config['type'] = 'A'
-    episodeReward = run(config)
-    mean_reward = np.mean(episodeReward, axis=0)
-    std_reward = np.std(episodeReward, axis=0)
-    # print(mean_reward)
-    fileName = 'arrayResults/AC_gamma=' + str(depth[act]) + '.npy'
-    np.save(fileName, episodeReward)
-    Plot.add_curve(mean_reward, std_reward, label=r'$\gamma=${}'.format(depth[act]))
-    PlotNoError.add_curve(mean_reward, std_reward, label=r'$\gamma=${}'.format(depth[act]))
-    Plot.save("plotResults/ACGamma.png")
-    PlotNoError.save("plotResults/ACGammaNoError.png")
+# #Gamma Actor
+# print("Actor Critic Gamma Experiments")
+# Plot = LearningCurvePlot(title = 'Actor Critic with Different Discount Factors')
+# PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with Different Discount Factors')
+# depth = [0.1, 0.5, 0.8, 0.85, 0.9, 0.95, 0.99, 1]
+# for act in range(len(depth)):
+#     config = deepcopy(baseline_config) # we must use deepcope to avoid changing the value of original baseline config
+#     config['gamma'] = depth[act]
+#     config['type'] = 'A'
+#     episodeReward = run(config)
+#     mean_reward = np.mean(episodeReward, axis=0)
+#     std_reward = np.std(episodeReward, axis=0)
+#     # print(mean_reward)
+#     fileName = 'arrayResults/AC_gamma=' + str(depth[act]) + '.npy'
+#     np.save(fileName, episodeReward)
+#     Plot.add_curve(mean_reward, std_reward, label=r'$\gamma=${}'.format(depth[act]))
+#     PlotNoError.add_curve(mean_reward, std_reward, label=r'$\gamma=${}'.format(depth[act]))
+#     Plot.save("plotResults/ACGamma.png")
+#     PlotNoError.save("plotResults/ACGammaNoError.png")
+#
+# Plot.save("plotResults/ACGamma.png")
+# PlotNoError.save("plotResults/ACGammaNoError.png")
+#
+# #Gamma REINFROCE
+# print("REINFROCE Gamma Experiments")
+# Plot = LearningCurvePlot(title = 'REINFORCE with Different Discount Factors')
+# PlotNoError = LearningCurvePlotNoError(title = 'REINFORCE with Different Discount Factors')
+# depth = [0.1, 0.5, 0.8, 0.85, 0.9, 0.95, 0.99, 1]
+# for act in range(len(depth)):
+#     config = deepcopy(baseline_config) # we must use deepcope to avoid changing the value of original baseline config
+#     config['gamma'] = depth[act]
+#     episodeReward = run(config)
+#     mean_reward = np.mean(episodeReward, axis=0)
+#     std_reward = np.std(episodeReward, axis=0)
+#     # print(mean_reward)
+#     fileName = 'arrayResults/R_gamma=' + str(depth[act]) + '.npy'
+#     np.save(fileName, episodeReward)
+#     Plot.add_curve(mean_reward, std_reward, label=r'$\gamma=${}'.format(depth[act]))
+#     PlotNoError.add_curve(mean_reward, std_reward, label=r'$\gamma=${}'.format(depth[act]))
+#     Plot.save("plotResults/RGamma.png")
+#     PlotNoError.save("plotResults/RGammaNoError.png")
+#
+# Plot.save("plotResults/RGamma.png")
+# PlotNoError.save("plotResults/RGammaNoError.png")
 
-Plot.save("plotResults/ACGamma.png")
-PlotNoError.save("plotResults/ACGammaNoError.png")
+# #Actor Critic Entropy Coefficient
+# print("Actor Critic Entropy Coefficients Experiments")
+# Plot = LearningCurvePlot(title = 'Actor Critic with Different Entropy Regularization Coefficients')
+# PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with Different Entropy Regularization Coefficients')
+# regu = [1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0]
+# reguName = ['1', '0,1', '0,01', '0,001', '0,0001', '0,00001', '0']
+# for act in range(len(regu)):
+#     config = deepcopy(baseline_config) # we must use deepcope to avoid changing the value of original baseline config
+#     config['lamda'] = regu[act]
+#     config['type'] = 'A'
+#     episodeReward = run(config)
+#     mean_reward = np.mean(episodeReward, axis=0)
+#     std_reward = np.std(episodeReward, axis=0)
+#     # print(mean_reward)
+#     fileName = 'arrayResults/AC_Lambda=' + reguName[act] + '.npy'
+#     np.save(fileName, episodeReward)
+#     Plot.add_curve(mean_reward, std_reward, label=r'$\lambda=${}'.format(regu[act]))
+#     PlotNoError.add_curve(mean_reward, std_reward, label=r'$\lambda=${}'.format(regu[act]))
+#     Plot.save("plotResults/ACEntropy.png")
+#     PlotNoError.save("plotResults/ACEntropyNoError.png")
+#
+# Plot.save("plotResults/ACEntropy.png")
+# PlotNoError.save("plotResults/ACEntropyNoError.png")
 
-#Gamma REINFROCE
-Plot = LearningCurvePlot(title = 'REINFORCE with Different Discount Factors')
-PlotNoError = LearningCurvePlotNoError(title = 'REINFORCE with Different Discount Factors')
-depth = [0.1, 0.5, 0.8, 0.85, 0.9, 0.95, 0.99, 1]
-for act in range(len(depth)):
-    config = deepcopy(baseline_config) # we must use deepcope to avoid changing the value of original baseline config
-    config['gamma'] = depth[act]
-    episodeReward = run(config)
-    mean_reward = np.mean(episodeReward, axis=0)
-    std_reward = np.std(episodeReward, axis=0)
-    # print(mean_reward)
-    fileName = 'arrayResults/R_gamma=' + str(depth[act]) + '.npy'
-    np.save(fileName, episodeReward)
-    Plot.add_curve(mean_reward, std_reward, label=r'$\gamma=${}'.format(depth[act]))
-    PlotNoError.add_curve(mean_reward, std_reward, label=r'$\gamma=${}'.format(depth[act]))
-    Plot.save("plotResults/RGamma.png")
-    PlotNoError.save("plotResults/RGammaNoError.png")
-
-Plot.save("plotResults/RGamma.png")
-PlotNoError.save("plotResults/RGammaNoError.png")
-
-#Actor Critic Entropy Coefficient
-Plot = LearningCurvePlot(title = 'Actor Critic with Different Entropy Regularization Coefficients')
-PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with Different Entropy Regularization Coefficients')
-regu = [1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0]
-reguName = ['1', '0,1', '0,01', '0,001', '0,0001', '0,00001', '0']
-for act in range(len(regu)):
-    config = deepcopy(baseline_config) # we must use deepcope to avoid changing the value of original baseline config
-    config['lamda'] = regu[act]
-    config['type'] = 'A'
-    episodeReward = run(config)
-    mean_reward = np.mean(episodeReward, axis=0)
-    std_reward = np.std(episodeReward, axis=0)
-    # print(mean_reward)
-    fileName = 'arrayResults/AC_Lambda=' + reguName[act] + '.npy'
-    np.save(fileName, episodeReward)
-    Plot.add_curve(mean_reward, std_reward, label=r'$\lambda=${}'.format(regu[act]))
-    PlotNoError.add_curve(mean_reward, std_reward, label=r'$\lambda=${}'.format(regu[act]))
-    Plot.save("plotResults/ACEntropy.png")
-    PlotNoError.save("plotResults/ACEntropyNoError.png")
-
-Plot.save("plotResults/ACEntropy.png")
-PlotNoError.save("plotResults/ACEntropyNoError.png")
-
-#Actor Critic bootstrap and baseline
+# Actor Critic bootstrap and baseline
+print("Actor Critic Bootstrap and Baseline Experiments")
 Plot = LearningCurvePlot(title = 'Actor Critic with Different combinations of Bootstrap and Baseline')
 PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with Different combinations of Bootstrap and Baseline')
 bootstrap = [True, False]
@@ -270,6 +272,7 @@ i = 0
 for boot in bootstrap:
     for base in baseline:
         config = deepcopy(baseline_config) # we must use deepcope to avoid changing the value of original baseline config
+        config['step'] = 10
         config['bootstrap'] = boot
         config['baseline'] = base
         config['type'] = 'A'
@@ -279,8 +282,8 @@ for boot in bootstrap:
         # print(mean_reward)
         fileName = 'arrayResults/AC_bootbase=' + reguName[i] + '.npy'
         np.save(fileName, episodeReward)
-        Plot.add_curve(mean_reward, std_reward, label=r'$\boot-base=${}'.format(boot, "-", base))
-        PlotNoError.add_curve(mean_reward, std_reward, label=r'$\boot-base=${}'.format(boot, "-", base))
+        Plot.add_curve(mean_reward, std_reward, label=r'boot-base={}'.format(reguName[i]))
+        PlotNoError.add_curve(mean_reward, std_reward, label=r'boot-base={}'.format(reguName[i]))
         Plot.save("plotResults/ACBootbase.png")
         PlotNoError.save("plotResults/ACBootbaseNoError.png")
         i += 1
