@@ -82,8 +82,22 @@ class Policy(nn.Module):
         entropy = - torch.sum(action_distribution * torch.log(action_distribution))
         return action, log_prob_action, entropy
 
+    def log_prob_based_on_action(self, state, action):
+        if self.conv:
+            state = state.transpose(2, 0, 1)
+            state = torch.tensor(state.reshape(-1, 2, 7, 7))
+        else:
+            state = torch.tensor(state.reshape(-1, ))
+        action_distribution = self.network(state)
+        if self.conv:
+            action_distribution = action_distribution.reshape(-1, )
+        # print(action_distribution, action_distribution.shape)
+        # print(action_distribution)
+        log_prob_action = torch.log(action_distribution.squeeze(0))[action]
+        return log_prob_action
+
 class REINFORCEAgent():
-    def __init__(self, env, n_states, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, step=1, if_conv=False):
+    def __init__(self, env, n_states, n_actions = 3, learning_rate=0.001, lamda=0.01, gamma=0.99, step=1, if_conv=False, ClipPPO=False):
 
         self.learning_rate = learning_rate
         self.lamda = lamda # control the strength of the entropy regularization term in the loss
@@ -98,9 +112,11 @@ class REINFORCEAgent():
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=self.learning_rate)
         self.type = torch.float32
         self.steps = 0
-
+        self.old_policy = Policy(n_states, n_actions, neurons = 128, if_conv=if_conv).to(self.device)
+        self.old_policy.load_state_dict(self.policy.state_dict())
         # print(sum([param.nelement() for param in self.policy.parameters()]))
         # sys.exit(0)
+        self.ClipPPO = ClipPPO
 
 
 
@@ -108,17 +124,24 @@ class REINFORCEAgent():
         s = self.env.reset()
         trace = []
         log_probs = []
+        old_probs = []
         entropies = []
         for step in range(10000):
             a, log_prob, entropy = self.policy(s)
+            old_prob = self.old_policy.log_prob_based_on_action(s, a)
             next_s, r, terminal, _ = self.env.step(a)
             trace.append((s, a, r))
             log_probs.append(log_prob)
             entropies.append(entropy)
+            old_probs.append(old_prob.squeeze(0).detach().cpu().numpy())
             if not terminal:
                 s = next_s
             else:
                 break
+        # print("Episode: ", episode, "\n", log_probs, "\n", old_probs)
+        # print("****************************************************")
+        self.old_policy.load_state_dict(self.policy.state_dict())
+        # sys.exit(0)
 
         discounted_rewards = []
         gt_pre = 0
@@ -132,8 +155,19 @@ class REINFORCEAgent():
         discounted_rewards_tensor = torch.tensor(discounted_rewards, dtype=self.type, device=self.device)
 
         log_probs = torch.stack(log_probs)
+        old_probs = torch.tensor(np.array(old_probs), dtype=self.type, device=self.device)
         entropies = torch.stack(entropies)
-        policy_gradient = -(discounted_rewards_tensor * log_probs + self.lamda * entropies) / len(trace)
+
+
+
+        if self.ClipPPO:
+            # ratio = log_probs / old_probs
+            ratio = torch.exp(log_probs - old_probs)
+            termOne = ratio * discounted_rewards_tensor
+            termTwo = torch.clamp(ratio, 0.8, 1.2) * discounted_rewards_tensor
+            policy_gradient = - (torch.min(termOne, termTwo) + self.lamda * entropies) / len(trace)
+        else:
+            policy_gradient = -(discounted_rewards_tensor * log_probs + self.lamda * entropies) / len(trace)
         self.policy.zero_grad()
         policy_gradient.sum().backward()
         self.optimizer.step()

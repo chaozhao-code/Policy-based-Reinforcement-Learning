@@ -1,4 +1,5 @@
 from ActorCritic import ACAgent
+from reinforce import REINFORCEAgent
 from catch import Catch
 import matplotlib
 import tqdm
@@ -28,8 +29,8 @@ def test():
     n_states = 7 * 7 * 2
     n_actions = env.action_space.n
 
-    agent = ACAgent(env, n_states, n_actions, if_conv=True)
-
+    # agent = ACAgent(env, n_states, n_actions, learning_rate=0.001, step=10, bootstrapping=True, baseline=True, ClipPPO=True)
+    agent = REINFORCEAgent(env, n_states, n_actions, ClipPPO=True)
     #train
     for i in range(40000):
         print("Episode: ", i, "Reward: ", agent.train(i))

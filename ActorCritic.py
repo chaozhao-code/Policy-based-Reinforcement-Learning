@@ -59,6 +59,12 @@ class ActorNetwork(nn.Module):
         entropy = - torch.sum(action_distribution * torch.log(action_distribution))
         return action, log_prob_action, entropy
 
+    def log_prob_based_on_action(self, state, action):
+        state = torch.tensor(state.reshape(-1, ))
+        action_distribution = self.network(state)
+        log_prob_action = torch.log(action_distribution.squeeze(0))[action]
+        return log_prob_action
+
 
 class CriticNetwork(nn.Module):
     def __init__(self, n_states, layers=1, neurons=128, activation=nn.ReLU(), initialization = nn.init.xavier_uniform_):
@@ -100,7 +106,7 @@ class CriticNetwork(nn.Module):
 
 
 class ACAgent():
-    def __init__(self, env, n_states, n_actions=3, learning_rate=0.001, lamda=0.01, gamma=0.99, step=1, if_conv=False, bootstrapping=True, baseline=True):
+    def __init__(self, env, n_states, n_actions=3, learning_rate=0.001, lamda=0.01, gamma=0.99, step=1, if_conv=False, bootstrapping=True, baseline=True, ClipPPO=False):
 
         self.learning_rate = learning_rate
         self.lamda = lamda # control the strength of the entropy regularization term in the loss
@@ -121,11 +127,13 @@ class ACAgent():
         self.CriticOptimizer = torch.optim.Adam(self.critic.parameters(), lr=self.learning_rate)
         self.type = torch.float32
         self.if_conv = if_conv
-
-
+        self.old_actor = ActorNetwork(n_states, n_actions, neurons = 128).to(self.device)
+        self.old_actor.load_state_dict(self.actor.state_dict())
         ##
         self.bootstrapping = bootstrapping  # if use bootstrapping method
         self.baseline = baseline       # if use baseline subtraction method
+
+        self.ClipPPO = ClipPPO # if use the clip PPO loss
 
 
     def train(self, episode):
@@ -134,23 +142,26 @@ class ACAgent():
         s = self.env.reset()
         trace = []
         log_probs = []
+        old_probs = []
         entropies = []
         values = []
         for step in range(10000):
             a, log_prob, entropy = self.actor(s)
+            old_prob = self.old_actor.log_prob_based_on_action(s, a)
             values.append(self.critic(s))
             next_s, r, terminal, _ = self.env.step(a)
             trace.append((s, a, r))
             log_probs.append(log_prob)
+            old_probs.append(old_prob.squeeze(0).detach().cpu().numpy())
             entropies.append(entropy)
             if not terminal:
                 s = next_s
             else:
                 values.append(self.critic(next_s))
                 break
-
-
-
+        # print("Episode: ", episode, "\n", log_probs, "\n", old_probs)
+        # print("****************************************************")
+        self.old_actor.load_state_dict(self.actor.state_dict())
 
         if self.bootstrapping:
             estimated_Q = []
@@ -163,6 +174,7 @@ class ACAgent():
             estimated_Q = torch.tensor(estimated_Q, dtype=self.type, device=self.device)
 
             log_probs = torch.stack(log_probs[:len(trace) + 1 - self.n])
+            old_probs = torch.tensor(np.array(old_probs), dtype=self.type, device=self.device)[:len(trace) + 1 - self.n]
             entropies = torch.stack(entropies[:len(trace) + 1 - self.n])
             values = torch.stack(values[:len(trace) + 1 - self.n])
             values = torch.reshape(values, (-1,))
@@ -178,13 +190,21 @@ class ACAgent():
             estimated_Q = torch.tensor(np.array(discounted_rewards), dtype=self.type, device=self.device)
 
             log_probs = torch.stack(log_probs)
+            old_probs = torch.tensor(np.array(old_probs), dtype=self.type, device=self.device)
             entropies = torch.stack(entropies)
             values = torch.stack(values[:len(trace)])
             values = torch.reshape(values, (-1,))
 
         if self.baseline:
             advantage = estimated_Q - values
-            actor_gradient = -(advantage.detach() * log_probs + self.lamda * entropies) / len(values)
+            if self.ClipPPO:
+                # ratio = log_probs / old_probs
+                ratio = torch.exp(log_probs - old_probs)
+                termOne = ratio * advantage.detach()
+                termTwo = torch.clamp(ratio, 0.8, 1.2) * advantage.detach()
+                actor_gradient = - (torch.min(termOne, termTwo) + self.lamda * entropies) / len(values)
+            else:
+                actor_gradient = -(advantage.detach() * log_probs + self.lamda * entropies) / len(values)
             critic_loss = torch.square(advantage) / len(values)
             self.critic.zero_grad()
             self.actor.zero_grad()
@@ -193,7 +213,16 @@ class ACAgent():
             self.CriticOptimizer.step()
             self.ActorOptimizer.step()
         else:
-            actor_gradient = -(estimated_Q.detach() * log_probs + self.lamda * entropies) / len(values)
+            if self.ClipPPO:
+                # ratio = log_probs / old_probs
+                ratio = torch.exp(log_probs - old_probs)
+                termOne = ratio * estimated_Q.detach()
+                termTwo = torch.clamp(ratio, 0.8, 1.2) * estimated_Q.detach()
+                actor_gradient = - (torch.min(termOne, termTwo) + self.lamda * entropies) / len(values)
+            else:
+                actor_gradient = -(estimated_Q.detach() * log_probs + self.lamda * entropies) / len(values)
+
+            # actor_gradient = -(estimated_Q.detach() * log_probs + self.lamda * entropies) / len(values)
 
             self.critic.zero_grad()
             self.actor.zero_grad()
