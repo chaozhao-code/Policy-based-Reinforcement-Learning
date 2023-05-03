@@ -105,15 +105,12 @@ class REINFORCEAgent():
 
 
     def train(self, episode):
-
-
         s = self.env.reset()
         trace = []
         log_probs = []
         entropies = []
         for step in range(10000):
             a, log_prob, entropy = self.policy(s)
-
             next_s, r, terminal, _ = self.env.step(a)
             trace.append((s, a, r))
             log_probs.append(log_prob)
