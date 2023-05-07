@@ -36,20 +36,62 @@ baseline_config = {"type": "R",                                   ## must be 'R'
                    "observation_type": 'pixel',  # 'vector'
                    "seed": None,
                    }
+#
+# best_agent_config = {"type": "A",                                   ## must be 'R' for "REINFORCE" or 'A' for "ActorCritic"
+#                    "alpha": 0.001,                                 ## learning rate of Network
+#                    "gamma": 0.85,                                 ## discount rate of Network
+#                    "lamda": 0.1,                                 ## the strength of the entropy regularization term in the loss
+#                    "device": "cpu",                               ## if you want to use GPU, on Apple Silicon, set it as "mps", else set it as "cuda"
+#                    "layers": 1,                                   ## number of layers of q-network
+#                    "neurons": 12,                                 ## number of neurons of network, must be int or list with length layers+1
+#                    "activation": nn.ReLU(),                       ## activation method
+#                    "initialization": nn.init.xavier_normal_,      ## initialization method
+#                    "if_conv": False,                              ## whether to use convolutional layers, only effective for REINFORCE
+#                    "step": 200,                                     ## depth of bootstrapping of ActorCritic
+#                    "bootstrapping": True,                         ## control if use the bootstrapping technology
+#                    "baseline": True,                              ## control if use the baseline subtraction technology
+#                     # parameters below are related to the environment
+#                    "rows": 7,
+#                    "columns": 7,
+#                    "speed": 1.0,
+#                    "max_steps": 250,
+#                    "max_misses": 10,
+#                    "observation_type": 'pixel',  # 'vector'
+#                    "seed": None,
+#                    }
 
-best_agent_config = {"type": "A",                                   ## must be 'R' for "REINFORCE" or 'A' for "ActorCritic"
+
+best_AC_config = {"type":  "A",                                   ## must be 'R' for "REINFORCE" or 'A' for "ActorCritic"
                    "alpha": 0.001,                                 ## learning rate of Network
-                   "gamma": 0.85,                                 ## discount rate of Network
+                   "gamma": 0.5,                                 ## discount rate of Network
                    "lamda": 0.1,                                 ## the strength of the entropy regularization term in the loss
                    "device": "cpu",                               ## if you want to use GPU, on Apple Silicon, set it as "mps", else set it as "cuda"
-                   "layers": 1,                                   ## number of layers of q-network
-                   "neurons": 12,                                 ## number of neurons of network, must be int or list with length layers+1
-                   "activation": nn.ReLU(),                       ## activation method
-                   "initialization": nn.init.xavier_normal_,      ## initialization method
                    "if_conv": False,                              ## whether to use convolutional layers, only effective for REINFORCE
-                   "step": 200,                                     ## depth of bootstrapping of ActorCritic
+                   "step": 10,                                     ## depth of bootstrapping of ActorCritic
                    "bootstrapping": True,                         ## control if use the bootstrapping technology
                    "baseline": True,                              ## control if use the baseline subtraction technology
+                   "ClipPPO": False,
+                    # parameters below are related to the environment
+                   "rows": 7,
+                   "columns": 7,
+                   "speed": 1.0,
+                   "max_steps": 250,
+                   "max_misses": 10,
+                   "observation_type": 'pixel',  # 'vector'
+                   "seed": None,
+                   }
+
+
+best_R_config = {"type":  "R",                                   ## must be 'R' for "REINFORCE" or 'A' for "ActorCritic"
+                   "alpha": 0.001,                                 ## learning rate of Network
+                   "gamma": 0.5,                                 ## discount rate of Network
+                   "lamda": 0.1,                                 ## the strength of the entropy regularization term in the loss
+                   "device": "cpu",                               ## if you want to use GPU, on Apple Silicon, set it as "mps", else set it as "cuda"
+                   "if_conv": False,                              ## whether to use convolutional layers, only effective for REINFORCE
+                   "step": 10,                                     ## depth of bootstrapping of ActorCritic
+                   "bootstrapping": True,                         ## control if use the bootstrapping technology
+                   "baseline": True,                              ## control if use the baseline subtraction technology
+                   "ClipPPO": False,
                     # parameters below are related to the environment
                    "rows": 7,
                    "columns": 7,
@@ -82,10 +124,10 @@ def run(config):
         if config['type'] == 'R':
             agent = REINFORCEAgent(env, n_states, n_actions=n_actions, learning_rate=config['alpha'],
                                    lamda=config['lamda'], gamma=config['gamma'], step=config['step'],
-                                   if_conv=config['if_conv'])
+                                   if_conv=config['if_conv'], ClipPPO=config['ClipPPO'])
         else:
             agent = ACAgent(env, n_states, n_actions=n_actions, learning_rate=config['alpha'], lamda=config['lamda'],
-                            gamma=config['gamma'], step=config['step'], if_conv=config['if_conv'], bootstrapping=config['bootstrapping'], baseline=config['baseline'])
+                            gamma=config['gamma'], step=config['step'], if_conv=config['if_conv'], bootstrapping=config['bootstrapping'], baseline=config['baseline'], ClipPPO=config['ClipPPO'])
 
         for j in range(EPISODE):
             try:
@@ -314,97 +356,157 @@ def run(config):
 # Plot.save("plotResults/ACBootbase.png")
 # PlotNoError.save("plotResults/ACBootbaseNoError.png")
 
-##Environment Experiments
-#Rows
-Plot = LearningCurvePlot(title = 'Actor Critic with different environment sizes')
-PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with different environment sizes')
-i = 0
-regu = [7, 8, 9, 10, 15, 25]
-reguName = ['7x7', '8x8', '9x9', '10x10', '15x15', '25x25']
-for act in regu:
-    config = deepcopy(best_agent_config) # we must use deepcope to avoid changing the value of original baseline config
-    config["rows"] = act
-    config["columns"] = act
-    episodeReward = run(config)
-    mean_reward = np.mean(episodeReward, axis=0)
-    std_reward = np.std(episodeReward, axis=0)
-    # print(mean_reward)
-    fileName = 'arrayResults/part2_size=' + reguName[i] + '.npy'
-    np.save(fileName, episodeReward)
-    Plot.add_curve(mean_reward, std_reward, label=r'size={}'.format(reguName[i]))
-    PlotNoError.add_curve(mean_reward, std_reward, label=r'size={}'.format(reguName[i]))
-    Plot.save("plotResults/part2_size.png")
-    PlotNoError.save("plotResults/part2_sizeNoError.png")
-    i += 1
-
-Plot.save("plotResults/part2_size.png")
-PlotNoError.save("plotResults/part2_sizeNoError.png")
-
-#Speed change
-Plot = LearningCurvePlot(title = 'Actor Critic with different environment speeds')
-PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with different environment speeds')
-i = 0
-regu = [0.5, 0.75, 1.0, 1.25, 1.5, 2]
-reguName = ['0.5', '0.75', '1', '1.25', '1.5', '2']
-for act in regu:
-    config = deepcopy(best_agent_config) # we must use deepcope to avoid changing the value of original baseline config
-    config['speed'] = act
-    episodeReward = run(config)
-    mean_reward = np.mean(episodeReward, axis=0)
-    std_reward = np.std(episodeReward, axis=0)
-    # print(mean_reward)
-    fileName = 'arrayResults/part2_speed=' + reguName[i] + '.npy'
-    np.save(fileName, episodeReward)
-    Plot.add_curve(mean_reward, std_reward, label=r'speed={}'.format(reguName[i]))
-    PlotNoError.add_curve(mean_reward, std_reward, label=r'speed={}'.format(reguName[i]))
-    Plot.save("plotResults/part2_speed.png")
-    PlotNoError.save("plotResults/part2_speedNoError.png")
-    i+=1
-
-Plot.save("plotResults/part2_speed.png")
-PlotNoError.save("plotResults/part2_speedNoError.png")
-
-#Change to observation type vector with speed 1 and speed >1
-Plot = LearningCurvePlot(title = 'Actor Critic with different observation types')
-PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with different observation types')
-i = 0
-
-types = ['pixel', 'vector']
-for act in types:
-    config = deepcopy(best_agent_config) # we must use deepcope to avoid changing the value of original baseline config
-    config['observation_type'] = act
-    episodeReward = run(config)
-    mean_reward = np.mean(episodeReward, axis=0)
-    std_reward = np.std(episodeReward, axis=0)
-    # print(mean_reward)
-    fileName = 'arrayResults/part2_types=' + reguName[i] + '.npy'
-    np.save(fileName, episodeReward)
-    Plot.add_curve(mean_reward, std_reward, label=r'type={}'.format(act))
-    PlotNoError.add_curve(mean_reward, std_reward, label=r'type={}'.format(act))
-    Plot.save("plotResults/part2_types.png")
-    PlotNoError.save("plotResults/part2_typesNoError.png")
-    i+=1
-
-Plot.save("plotResults/part2_types.png")
-PlotNoError.save("plotResults/part2_typesNoError.png")
+# Clip-PPO and Non Clip-PPO
 
 
 
-#Non square with speed change
-Plot = LearningCurvePlot(title = 'Actor Critic with a non-square environment')
-PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with a non-square environment')
+Plot = LearningCurvePlot(title = 'Comparison between Actor-Critic and REINFORCE with Optimal Parameters')
+PlotNoError = LearningCurvePlotNoError(title = 'Comparison between Actor-Critic and REINFORCE with Optimal Parameters')
 
-config = deepcopy(best_agent_config) # we must use deepcope to avoid changing the value of original baseline config
-config['speed'] = 0.5
-config['rows'] = 14
-config['columns'] = 7
+# print("BEST AC WITHOUT CLIPPPO")
+# config = deepcopy(best_AC_config) # we must use deepcope to avoid changing the value of original baseline config
+# episodeReward = run(config)
+# mean_reward = np.mean(episodeReward, axis=0)
+# std_reward = np.std(episodeReward, axis=0)
+# fileName = 'arrayResults/BestACNoClipPPO' + '.npy'
+# np.save(fileName, episodeReward)
+# Plot.add_curve(mean_reward, std_reward, label=r'Actor-Critic (without Clip-PPO)')
+# PlotNoError.add_curve(mean_reward, std_reward, label=r'Actor-Critic (without Clip-PPO)')
+# Plot.save("plotResults/BestModel.png")
+# PlotNoError.save("plotResults/BestModelNoError.png")
+
+print("BEST AC WITH CLIPPPO")
+config = deepcopy(best_AC_config) # we must use deepcope to avoid changing the value of original baseline config
+config['ClipPPO'] = True
 episodeReward = run(config)
 mean_reward = np.mean(episodeReward, axis=0)
 std_reward = np.std(episodeReward, axis=0)
-# print(mean_reward)
-fileName = 'arrayResults/part2_combination=' + reguName[i] + '.npy'
+fileName = 'arrayResults/BestACClipPPO' + '.npy'
 np.save(fileName, episodeReward)
-Plot.add_curve(mean_reward, std_reward, label='14x7, with speed=0.5')
-PlotNoError.add_curve(mean_reward, std_reward, label="14x7, with speed=0.5")
-Plot.save("plotResults/part2_combination.png")
-PlotNoError.save("plotResults/part2_combination.png")
+Plot.add_curve(mean_reward, std_reward, label=r'Actor-Critic (with Clip-PPO)')
+PlotNoError.add_curve(mean_reward, std_reward, label=r'Actor-Critic (with Clip-PPO)')
+Plot.save("plotResults/BestModel.png")
+PlotNoError.save("plotResults/BestModelNoError.png")
+#
+# print("BEST R WITHOUT CLIPPPO")
+# config = deepcopy(best_R_config) # we must use deepcope to avoid changing the value of original baseline config
+# episodeReward = run(config)
+# mean_reward = np.mean(episodeReward, axis=0)
+# std_reward = np.std(episodeReward, axis=0)
+# fileName = 'arrayResults/BestREINFORCENoClipPPO' + '.npy'
+# np.save(fileName, episodeReward)
+# Plot.add_curve(mean_reward, std_reward, label=r'REINFORCE (without Clip-PPO)')
+# PlotNoError.add_curve(mean_reward, std_reward, label=r'REINFORCE (without Clip-PPO)')
+# Plot.save("plotResults/BestModel.png")
+# PlotNoError.save("plotResults/BestModelNoError.png")
+#
+# print("BEST R WITH CLIPPPO")
+# config = deepcopy(best_R_config) # we must use deepcope to avoid changing the value of original baseline config
+# config['ClipPPO'] = True
+# episodeReward = run(config)
+# mean_reward = np.mean(episodeReward, axis=0)
+# std_reward = np.std(episodeReward, axis=0)
+# fileName = 'arrayResults/BestREINFORCEClipPPO' + '.npy'
+# np.save(fileName, episodeReward)
+# Plot.add_curve(mean_reward, std_reward, label=r'REINFORCE (with Clip-PPO)')
+# PlotNoError.add_curve(mean_reward, std_reward, label=r'REINFORCE (with Clip-PPO)')
+# Plot.save("plotResults/BestModel.png")
+# PlotNoError.save("plotResults/BestModelNoError.png")
+
+
+
+
+# ##Environment Experiments
+# #Rows
+# Plot = LearningCurvePlot(title = 'Actor Critic with different environment sizes')
+# PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with different environment sizes')
+# i = 0
+# regu = [7, 8, 9, 10, 15, 25]
+# reguName = ['7x7', '8x8', '9x9', '10x10', '15x15', '25x25']
+# for act in regu:
+#     config = deepcopy(best_agent_config) # we must use deepcope to avoid changing the value of original baseline config
+#     config["rows"] = act
+#     config["columns"] = act
+#     episodeReward = run(config)
+#     mean_reward = np.mean(episodeReward, axis=0)
+#     std_reward = np.std(episodeReward, axis=0)
+#     # print(mean_reward)
+#     fileName = 'arrayResults/part2_size=' + reguName[i] + '.npy'
+#     np.save(fileName, episodeReward)
+#     Plot.add_curve(mean_reward, std_reward, label=r'size={}'.format(reguName[i]))
+#     PlotNoError.add_curve(mean_reward, std_reward, label=r'size={}'.format(reguName[i]))
+#     Plot.save("plotResults/part2_size.png")
+#     PlotNoError.save("plotResults/part2_sizeNoError.png")
+#     i += 1
+#
+# Plot.save("plotResults/part2_size.png")
+# PlotNoError.save("plotResults/part2_sizeNoError.png")
+#
+# #Speed change
+# Plot = LearningCurvePlot(title = 'Actor Critic with different environment speeds')
+# PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with different environment speeds')
+# i = 0
+# regu = [0.5, 0.75, 1.0, 1.25, 1.5, 2]
+# reguName = ['0.5', '0.75', '1', '1.25', '1.5', '2']
+# for act in regu:
+#     config = deepcopy(best_agent_config) # we must use deepcope to avoid changing the value of original baseline config
+#     config['speed'] = act
+#     episodeReward = run(config)
+#     mean_reward = np.mean(episodeReward, axis=0)
+#     std_reward = np.std(episodeReward, axis=0)
+#     # print(mean_reward)
+#     fileName = 'arrayResults/part2_speed=' + reguName[i] + '.npy'
+#     np.save(fileName, episodeReward)
+#     Plot.add_curve(mean_reward, std_reward, label=r'speed={}'.format(reguName[i]))
+#     PlotNoError.add_curve(mean_reward, std_reward, label=r'speed={}'.format(reguName[i]))
+#     Plot.save("plotResults/part2_speed.png")
+#     PlotNoError.save("plotResults/part2_speedNoError.png")
+#     i+=1
+#
+# Plot.save("plotResults/part2_speed.png")
+# PlotNoError.save("plotResults/part2_speedNoError.png")
+#
+# #Change to observation type vector with speed 1 and speed >1
+# Plot = LearningCurvePlot(title = 'Actor Critic with different observation types')
+# PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with different observation types')
+# i = 0
+#
+# types = ['pixel', 'vector']
+# for act in types:
+#     config = deepcopy(best_agent_config) # we must use deepcope to avoid changing the value of original baseline config
+#     config['observation_type'] = act
+#     episodeReward = run(config)
+#     mean_reward = np.mean(episodeReward, axis=0)
+#     std_reward = np.std(episodeReward, axis=0)
+#     # print(mean_reward)
+#     fileName = 'arrayResults/part2_types=' + reguName[i] + '.npy'
+#     np.save(fileName, episodeReward)
+#     Plot.add_curve(mean_reward, std_reward, label=r'type={}'.format(act))
+#     PlotNoError.add_curve(mean_reward, std_reward, label=r'type={}'.format(act))
+#     Plot.save("plotResults/part2_types.png")
+#     PlotNoError.save("plotResults/part2_typesNoError.png")
+#     i+=1
+#
+# Plot.save("plotResults/part2_types.png")
+# PlotNoError.save("plotResults/part2_typesNoError.png")
+#
+#
+#
+# #Non square with speed change
+# Plot = LearningCurvePlot(title = 'Actor Critic with a non-square environment')
+# PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with a non-square environment')
+#
+# config = deepcopy(best_agent_config) # we must use deepcope to avoid changing the value of original baseline config
+# config['speed'] = 0.5
+# config['rows'] = 14
+# config['columns'] = 7
+# episodeReward = run(config)
+# mean_reward = np.mean(episodeReward, axis=0)
+# std_reward = np.std(episodeReward, axis=0)
+# # print(mean_reward)
+# fileName = 'arrayResults/part2_combination=' + reguName[i] + '.npy'
+# np.save(fileName, episodeReward)
+# Plot.add_curve(mean_reward, std_reward, label='14x7, with speed=0.5')
+# PlotNoError.add_curve(mean_reward, std_reward, label="14x7, with speed=0.5")
+# Plot.save("plotResults/part2_combination.png")
+# PlotNoError.save("plotResults/part2_combination.png")

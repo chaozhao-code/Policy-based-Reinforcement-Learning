@@ -172,12 +172,12 @@ class ACAgent():
                 estimated_Q.append(Gt)
 
             estimated_Q = torch.tensor(estimated_Q, dtype=self.type, device=self.device)
-
             log_probs = torch.stack(log_probs[:len(trace) + 1 - self.n])
             old_probs = torch.tensor(np.array(old_probs), dtype=self.type, device=self.device)[:len(trace) + 1 - self.n]
             entropies = torch.stack(entropies[:len(trace) + 1 - self.n])
             values = torch.stack(values[:len(trace) + 1 - self.n])
             values = torch.reshape(values, (-1,))
+
         else:
             discounted_rewards = []
             gt_pre = 0
