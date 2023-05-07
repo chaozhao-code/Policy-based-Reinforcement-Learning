@@ -175,5 +175,3 @@ class REINFORCEAgent():
         total_reward = np.sum([trace[i][2] for i in range(len(trace))])
         # print("Episode : {}, Reward : {:.2f}".format(episode, total_reward))
         return total_reward
-
-

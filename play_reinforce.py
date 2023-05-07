@@ -12,10 +12,10 @@ def test():
     # Hyperparameters
     rows = 7
     columns = 7
-    speed = 1.0
+    speed = 2
     max_steps = 250
     max_misses = 10
-    observation_type = 'pixel'  # 'vector'
+    observation_type = 'vector'  # 'vector'
     seed = None
 
     episodes=10000
@@ -26,20 +26,20 @@ def test():
     step_pause = 0.3  # the pause between each plot
     # env.render(step_pause)
 
-    n_states = 7 * 7 * 2
+    n_states = 3
     n_actions = env.action_space.n
 
-    agent = ACAgent(env, n_states, n_actions, learning_rate=0.001, step=200, bootstrapping=True, baseline=True, ClipPPO=True)
+    agent = ACAgent(env, n_states, n_actions, learning_rate=0.001, lamda=0.5, step=10, bootstrapping=True, baseline=True, ClipPPO=True)
     # agent = REINFORCEAgent(env, n_states, n_actions, ClipPPO=True)
     #train
-    for i in range(40000):
+    for i in range(5000):
         print("Episode: ", i, "Reward: ", agent.train(i))
 
     #play
     s = env.reset()
     terminal = False
     while not terminal:
-        a, _, _ = agent.policy(s)
+        a, _, _ = agent.actor(s)
         next_s, reward, terminal, _ = env.step(a)
         s = next_s
         env.render(step_pause)
