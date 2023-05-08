@@ -183,24 +183,24 @@ def run(config):
 #
 #Change to observation type vector with speed 1 and speed >1
 
-print("Change the observation Type")
+# print("Change the observation Type")
 # Plot = LearningCurvePlot(title = 'Actor Critic with different observation types')
-# PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with different observation types')
+# # PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with different observation types')
+# # speeds = [0.5, 1, 2]
 # speeds = [0.5, 1, 2]
-speeds = [0.5, 1, 2]
-
-
-for act in speeds:
-    config = deepcopy(best_AC_config) # we must use deepcope to avoid changing the value of original baseline config
-    config['observation_type'] = 'vector'
-    config['speed'] = act
-    print("Speed: ", act)
-    episodeReward = run(config)
-    mean_reward = np.mean(episodeReward, axis=0)
-    std_reward = np.std(episodeReward, axis=0)
-    # print(mean_reward)
-    fileName = 'arrayResults/part2_types=vector,speed=' + str(act) + '.npy'
-    np.save(fileName, episodeReward)
+#
+#
+# for act in speeds:
+#     config = deepcopy(best_AC_config) # we must use deepcope to avoid changing the value of original baseline config
+#     config['observation_type'] = 'vector'
+#     config['speed'] = act
+#     print("Speed: ", act)
+#     episodeReward = run(config)
+#     mean_reward = np.mean(episodeReward, axis=0)
+#     std_reward = np.std(episodeReward, axis=0)
+#     # print(mean_reward)
+#     fileName = 'arrayResults/part2_types=vector,speed=' + str(act) + '.npy'
+#     np.save(fileName, episodeReward)
     # Plot.add_curve(mean_reward, std_reward, label=r'type={}'.format(act))
     # PlotNoError.add_curve(mean_reward, std_reward, label=r'type={}'.format(act))
     # Plot.save("plotResults/part2_types.png")
@@ -211,21 +211,21 @@ for act in speeds:
 # #
 # #
 # #
-#Non square with speed change
-# Plot = LearningCurvePlot(title = 'Actor Critic with a non-square environment')
-# PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with a non-square environment')
-#
-# config = deepcopy(best_AC_config) # we must use deepcope to avoid changing the value of original baseline config
-# config['speed'] = 0.5
-# config['rows'] = 14
-# config['columns'] = 7
-# episodeReward = run(config)
-# mean_reward = np.mean(episodeReward, axis=0)
-# std_reward = np.std(episodeReward, axis=0)
-# # print(mean_reward)
-# fileName = 'arrayResults/part2_combination=' + '.npy'
-# np.save(fileName, episodeReward)
-# Plot.add_curve(mean_reward, std_reward, label='14x7, with speed=0.5')
-# PlotNoError.add_curve(mean_reward, std_reward, label="14x7, with speed=0.5")
-# Plot.save("plotResults/part2_combination.png")
-# PlotNoError.save("plotResults/part2_combination.png")
+# Non square with speed change
+Plot = LearningCurvePlot(title = 'Actor Critic with a non-square environment')
+PlotNoError = LearningCurvePlotNoError(title = 'Actor Critic with a non-square environment')
+
+config = deepcopy(best_AC_config) # we must use deepcope to avoid changing the value of original baseline config
+config['speed'] = 0.5
+config['rows'] = 7
+config['columns'] = 14
+episodeReward = run(config)
+mean_reward = np.mean(episodeReward, axis=0)
+std_reward = np.std(episodeReward, axis=0)
+# print(mean_reward)
+fileName = 'arrayResults/part2_combination=' + '.npy'
+np.save(fileName, episodeReward)
+Plot.add_curve(mean_reward, std_reward, label='14x7, with speed=0.5')
+PlotNoError.add_curve(mean_reward, std_reward, label="14x7, with speed=0.5")
+Plot.save("plotResults/part2_combination.png")
+PlotNoError.save("plotResults/part2_combination.png")

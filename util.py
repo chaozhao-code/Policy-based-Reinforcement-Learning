@@ -8,7 +8,7 @@ class LearningCurvePlot:
     def __init__(self, title=None):
         self.fig, self.ax = plt.subplots()
         self.ax.set_xlabel('Episode')
-        self.ax.set_ylabel('Total Reward on Episode (averaged over 10 runs)')
+        self.ax.set_ylabel('Total Reward on Episode (averaged over 50 runs)')
         if title is not None:
             self.ax.set_title(title)
 
@@ -44,7 +44,7 @@ class LearningCurvePlotNoError:
     def __init__(self, title=None):
         self.fig, self.ax = plt.subplots()
         self.ax.set_xlabel('Episode')
-        self.ax.set_ylabel('Total Reward on Episode (averaged over 10 runs)')
+        self.ax.set_ylabel('Total Reward on Episode (averaged over 50 runs)')
         if title is not None:
             self.ax.set_title(title)
 

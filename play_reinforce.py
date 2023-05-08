@@ -21,7 +21,7 @@ def test():
     episodes=10000
 
     # Initialize environment and Q-array
-    env = Catch(rows=rows, columns=columns, speed=speed, max_steps=max_steps,
+    env = Catch(rows=7, columns=14, speed=0.5, max_steps=max_steps,
                 max_misses=max_misses, observation_type=observation_type, seed=seed)
     step_pause = 0.3  # the pause between each plot
     # env.render(step_pause)
