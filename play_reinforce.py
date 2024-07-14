@@ -7,6 +7,7 @@ matplotlib.use('TkAgg') #'Qt5Agg') # 'TkAgg'
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np
+import time
 
 def test():
     # Hyperparameters
@@ -32,15 +33,18 @@ def test():
     agent = ACAgent(env, n_states, n_actions, learning_rate=0.001, lamda=0.5, step=10, bootstrapping=True, baseline=True, ClipPPO=True)
     # agent = REINFORCEAgent(env, n_states, n_actions, ClipPPO=True)
     #train
-    for i in range(5000):
-        print("Episode: ", i, "Reward: ", agent.train(i))
+#    for i in range(5000):
+#        print("Episode: ", i, "Reward: ", agent.train(i))
 
     #play
     s = env.reset()
     terminal = False
     while not terminal:
         a, _, _ = agent.actor(s)
+        print(a)
+        start = time.time()
         next_s, reward, terminal, _ = env.step(a)
+        print("Time", time.time() - start)
         s = next_s
         env.render(step_pause)
 
