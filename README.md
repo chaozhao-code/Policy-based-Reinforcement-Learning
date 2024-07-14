@@ -9,22 +9,18 @@
 **Step 3**: Install the necessary packages by running the following command:
 
 ```
-Copy code
 pip install -r requirements.txt
 ```
 
 **Step 4**: To run experiments for Part 1: Algorithm Variation (Sections 3.1 and 3.2 in the report), use the following command:
 
 ```
-Copy code
 python Experiment.py
 ```
 
 **Step 5**: To run experiments for models comparison (Clip-PPO) and Part 2: Environment Variation (Sections 3.3 and 3.4 in the report), use the following command:
 
 ```
-mathematica
-Copy code
 python Environment.py
 ```
 
