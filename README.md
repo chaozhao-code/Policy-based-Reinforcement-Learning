@@ -1,4 +1,10 @@
-# Reinforcement Learning Assignment 3
+# Policy-Based Reinforcement Learning Algorithms
+
+## Algorithms
+
+REINFORCE
+
+Actor-Critic
 
 ### How to Reproduce Our Results
 
